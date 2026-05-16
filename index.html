@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PPTX Image Extractor</title>
+  <title>Image Extractor — PPTX & PDF</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -24,7 +25,7 @@
       box-shadow: 0 4px 24px rgba(0,0,0,.10);
       padding: 2.5rem 2rem;
       width: 100%;
-      max-width: 480px;
+      max-width: 520px;
     }
 
     h1 { font-size: 1.5rem; font-weight: 700; color: #1a202c; margin-bottom: .25rem; }
@@ -39,252 +40,242 @@
       transition: border-color .2s, background .2s;
       position: relative;
     }
-
-    .drop-zone:hover, .drop-zone.dragover {
-      border-color: #4f6ef7;
-      background: #eef2ff;
-    }
-
-    .drop-zone input[type="file"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-    }
-
+    .drop-zone:hover, .drop-zone.dragover { border-color: #4f6ef7; background: #eef2ff; }
+    .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
     .drop-icon { font-size: 2.5rem; margin-bottom: .5rem; }
-
     .drop-label { color: #4a5568; font-size: .95rem; }
     .drop-label span { color: #4f6ef7; font-weight: 600; }
-
-    .file-name {
-      margin-top: .75rem;
-      font-size: .85rem;
-      color: #4f6ef7;
-      font-weight: 500;
-      min-height: 1.2em;
-    }
+    .file-name { margin-top: .75rem; font-size: .85rem; color: #4f6ef7; font-weight: 500; min-height: 1.2em; }
 
     .btn {
-      display: block;
-      width: 100%;
-      margin-top: 1.25rem;
-      padding: .85rem;
-      border: none;
-      border-radius: 10px;
-      background: #4f6ef7;
-      color: #fff;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
+      display: block; width: 100%; margin-top: 1.25rem;
+      padding: .85rem; border: none; border-radius: 10px;
+      background: #4f6ef7; color: #fff; font-size: 1rem;
+      font-weight: 600; cursor: pointer;
       transition: background .2s, opacity .2s;
     }
-
     .btn:hover { background: #3a56d4; }
     .btn:disabled { opacity: .55; cursor: not-allowed; }
 
     .progress-wrap { display: none; margin-top: 1.25rem; }
+    .progress-bar-bg { background: #e2e8f0; border-radius: 999px; height: 8px; overflow: hidden; }
+    .progress-bar { height: 100%; width: 0%; background: #4f6ef7; border-radius: 999px; transition: width .2s; }
+    .progress-label { margin-top: .5rem; font-size: .85rem; color: #718096; text-align: center; }
 
-    .progress-bar-bg {
-      background: #e2e8f0;
-      border-radius: 999px;
-      height: 8px;
-      overflow: hidden;
-    }
-
-    .progress-bar {
-      height: 100%;
-      width: 0%;
-      background: #4f6ef7;
-      border-radius: 999px;
-      transition: width .3s;
-    }
-
-    .progress-label {
-      margin-top: .5rem;
-      font-size: .85rem;
-      color: #718096;
-      text-align: center;
-    }
-
-    .message {
-      margin-top: 1rem;
-      padding: .75rem 1rem;
-      border-radius: 8px;
-      font-size: .9rem;
-      display: none;
-    }
-
-    .message.error { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
+    .message { margin-top: 1rem; padding: .75rem 1rem; border-radius: 8px; font-size: .9rem; display: none; }
+    .message.error   { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
     .message.success { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }
 
-    .preview-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-      gap: .5rem;
-      margin-top: 1.25rem;
-    }
-
-    .preview-grid img {
-      width: 100%;
-      aspect-ratio: 1;
-      object-fit: cover;
-      border-radius: 6px;
-      border: 1px solid #e2e8f0;
-    }
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: .5rem; margin-top: 1.25rem; }
+    .preview-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>PPTX Image Extractor</h1>
-    <p class="subtitle">Всё работает прямо в браузере — файл никуда не отправляется</p>
+<div class="card">
+  <h1>Image Extractor</h1>
+  <p class="subtitle">PPTX и PDF — всё работает в браузере, файл никуда не отправляется</p>
 
-    <div class="drop-zone" id="dropZone">
-      <input type="file" accept=".pptx" id="fileInput" />
-      <div class="drop-icon">📂</div>
-      <div class="drop-label">Перетащите файл сюда или <span>выберите</span></div>
-      <div class="file-name" id="fileName"></div>
-    </div>
-
-    <button class="btn" id="extractBtn" disabled>Извлечь картинки</button>
-
-    <div class="progress-wrap" id="progressWrap">
-      <div class="progress-bar-bg">
-        <div class="progress-bar" id="progressBar"></div>
-      </div>
-      <div class="progress-label" id="progressLabel">Обработка…</div>
-    </div>
-
-    <div class="message" id="message"></div>
-    <div class="preview-grid" id="previewGrid"></div>
+  <div class="drop-zone" id="dropZone">
+    <input type="file" accept=".pptx,.pdf" id="fileInput" />
+    <div class="drop-icon">📂</div>
+    <div class="drop-label">Перетащите <strong>.pptx</strong> или <strong>.pdf</strong> сюда или <span>выберите</span></div>
+    <div class="file-name" id="fileName"></div>
   </div>
 
-  <script>
-    const fileInput    = document.getElementById("fileInput");
-    const dropZone     = document.getElementById("dropZone");
-    const fileNameEl   = document.getElementById("fileName");
-    const extractBtn   = document.getElementById("extractBtn");
-    const progressWrap = document.getElementById("progressWrap");
-    const progressBar  = document.getElementById("progressBar");
-    const progressLbl  = document.getElementById("progressLabel");
-    const messageEl    = document.getElementById("message");
-    const previewGrid  = document.getElementById("previewGrid");
+  <button class="btn" id="extractBtn" disabled>Извлечь картинки</button>
 
-    let selectedFile = null;
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="progress-label" id="progressLabel">Обработка…</div>
+  </div>
 
-    function setFile(file) {
-      if (!file) return;
-      selectedFile = file;
-      fileNameEl.textContent = file.name;
-      extractBtn.disabled = false;
-      hideMessage();
-      previewGrid.innerHTML = "";
+  <div class="message" id="message"></div>
+  <div class="preview-grid" id="previewGrid"></div>
+</div>
+
+<script>
+  // PDF.js worker
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+  const fileInput    = document.getElementById("fileInput");
+  const dropZone     = document.getElementById("dropZone");
+  const fileNameEl   = document.getElementById("fileName");
+  const extractBtn   = document.getElementById("extractBtn");
+  const progressWrap = document.getElementById("progressWrap");
+  const progressBar  = document.getElementById("progressBar");
+  const progressLbl  = document.getElementById("progressLabel");
+  const messageEl    = document.getElementById("message");
+  const previewGrid  = document.getElementById("previewGrid");
+
+  let selectedFile = null;
+
+  function setFile(file) {
+    if (!file) return;
+    selectedFile = file;
+    fileNameEl.textContent = file.name;
+    extractBtn.disabled = false;
+    hideMessage();
+    previewGrid.innerHTML = "";
+  }
+
+  fileInput.addEventListener("change", () => setFile(fileInput.files[0]));
+  dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+  dropZone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+    setFile(e.dataTransfer.files[0]);
+  });
+
+  function showMessage(text, type) {
+    messageEl.textContent = text;
+    messageEl.className = `message ${type}`;
+    messageEl.style.display = "block";
+  }
+  function hideMessage() { messageEl.style.display = "none"; }
+  function setProgress(pct, label) {
+    progressBar.style.width = pct + "%";
+    progressLbl.textContent = label;
+  }
+
+  // ── PPTX: images live in ppt/media/ ──────────────────────────────────────
+  async function extractFromPptx(arrayBuffer) {
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const mediaFiles = Object.keys(zip.files).filter(
+      n => n.startsWith("ppt/media/") && !zip.files[n].dir
+    );
+    if (!mediaFiles.length) return [];
+
+    const results = [];
+    for (const name of mediaFiles) {
+      const blob = await zip.files[name].async("blob");
+      results.push({ name: name.split("/").pop(), blob });
     }
+    return results;
+  }
 
-    fileInput.addEventListener("change", () => setFile(fileInput.files[0]));
+  // ── PDF: extract embedded image XObjects via PDF.js ──────────────────────
+  async function extractFromPdf(arrayBuffer) {
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const results = [];
+    const seen = new Set();
 
-    dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
-    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
-    dropZone.addEventListener("drop", e => {
-      e.preventDefault();
-      dropZone.classList.remove("dragover");
-      setFile(e.dataTransfer.files[0]);
-    });
+    for (let p = 1; p <= pdf.numPages; p++) {
+      setProgress(10 + Math.round((p / pdf.numPages) * 65), `Страница ${p} из ${pdf.numPages}…`);
+      const page = await pdf.getPage(p);
+      const opList = await page.getOperatorList();
 
-    function showMessage(text, type) {
-      messageEl.textContent = text;
-      messageEl.className = `message ${type}`;
-      messageEl.style.display = "block";
-    }
-
-    function hideMessage() { messageEl.style.display = "none"; }
-
-    function setProgress(pct, label) {
-      progressBar.style.width = pct + "%";
-      progressLbl.textContent = label;
-    }
-
-    extractBtn.addEventListener("click", async () => {
-      if (!selectedFile) return;
-
-      extractBtn.disabled = true;
-      previewGrid.innerHTML = "";
-      hideMessage();
-      progressWrap.style.display = "block";
-      setProgress(10, "Читаем файл…");
-
-      try {
-        const arrayBuffer = await selectedFile.arrayBuffer();
-        setProgress(30, "Распаковываем PPTX…");
-
-        const zip = await JSZip.loadAsync(arrayBuffer);
-
-        // Images are stored in ppt/media/
-        const mediaFiles = Object.keys(zip.files).filter(name =>
-          name.startsWith("ppt/media/") && !zip.files[name].dir
-        );
-
-        if (mediaFiles.length === 0) {
-          showMessage("В презентации не найдено ни одной картинки.", "error");
-          progressWrap.style.display = "none";
-          extractBtn.disabled = false;
-          return;
+      // Collect unique image XObject names on this page
+      const imgNames = new Set();
+      for (let i = 0; i < opList.fnArray.length; i++) {
+        if (opList.fnArray[i] === pdfjsLib.OPS.paintImageXObject ||
+            opList.fnArray[i] === pdfjsLib.OPS.paintImageXObjectRepeat) {
+          imgNames.add(opList.argsArray[i][0]);
         }
+      }
 
-        setProgress(50, `Найдено ${mediaFiles.length} файлов, упаковываем…`);
+      for (const imgName of imgNames) {
+        const globalKey = `p${p}_${imgName}`;
+        if (seen.has(globalKey)) continue;
+        seen.add(globalKey);
 
-        // Build output ZIP
-        const outZip = new JSZip();
-        const previews = [];
+        // Resolve the image from page objects
+        const imgData = await new Promise(resolve => {
+          page.objs.get(imgName, obj => resolve(obj));
+        });
 
-        for (const name of mediaFiles) {
-          const blob = await zip.files[name].async("blob");
-          const shortName = name.split("/").pop();
-          outZip.file(shortName, blob);
+        if (!imgData || !imgData.data) continue;
 
-          // Collect image previews
-          const mime = blob.type || guessMime(shortName);
-          if (mime.startsWith("image/")) {
-            previews.push(URL.createObjectURL(blob));
+        // Draw raw RGBA data onto a canvas → PNG blob
+        const canvas = document.createElement("canvas");
+        canvas.width  = imgData.width;
+        canvas.height = imgData.height;
+        const ctx = canvas.getContext("2d");
+        const id  = ctx.createImageData(imgData.width, imgData.height);
+
+        // PDF.js returns RGBA (4 bytes) or RGB (3 bytes) depending on version
+        const src = imgData.data;
+        const dst = id.data;
+        if (src.length === imgData.width * imgData.height * 4) {
+          dst.set(src);
+        } else {
+          // RGB → RGBA
+          for (let i = 0, j = 0; i < src.length; i += 3, j += 4) {
+            dst[j]   = src[i];
+            dst[j+1] = src[i+1];
+            dst[j+2] = src[i+2];
+            dst[j+3] = 255;
           }
         }
 
-        setProgress(80, "Создаём архив…");
-        const outBlob = await outZip.generateAsync({ type: "blob" });
+        ctx.putImageData(id, 0, 0);
+        const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
+        const idx  = results.length + 1;
+        results.push({ name: `page${String(p).padStart(3,"0")}_img${String(idx).padStart(3,"0")}.png`, blob });
+      }
+    }
+    return results;
+  }
 
-        setProgress(100, "Готово!");
+  // ── Main handler ──────────────────────────────────────────────────────────
+  extractBtn.addEventListener("click", async () => {
+    if (!selectedFile) return;
 
-        // Download
-        const url = URL.createObjectURL(outBlob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = selectedFile.name.replace(/\.pptx$/i, "") + "_images.zip";
-        a.click();
-        URL.revokeObjectURL(url);
+    extractBtn.disabled = true;
+    previewGrid.innerHTML = "";
+    hideMessage();
+    progressWrap.style.display = "block";
+    setProgress(5, "Читаем файл…");
 
-        showMessage(`Скачано ${mediaFiles.length} файл(ов) в ZIP-архиве.`, "success");
+    try {
+      const arrayBuffer = await selectedFile.arrayBuffer();
+      const isPdf = selectedFile.name.toLowerCase().endsWith(".pdf");
 
-        // Show previews
-        for (const src of previews) {
-          const img = document.createElement("img");
-          img.src = src;
-          previewGrid.appendChild(img);
-        }
+      setProgress(10, isPdf ? "Открываем PDF…" : "Распаковываем PPTX…");
+      const images = isPdf
+        ? await extractFromPdf(arrayBuffer)
+        : await extractFromPptx(arrayBuffer);
 
-      } catch (err) {
-        showMessage("Ошибка: " + err.message, "error");
+      if (!images.length) {
+        showMessage("В файле не найдено ни одной картинки.", "error");
+        progressWrap.style.display = "none";
+        extractBtn.disabled = false;
+        return;
       }
 
-      extractBtn.disabled = false;
-      setTimeout(() => { progressWrap.style.display = "none"; }, 1500);
-    });
+      setProgress(80, `Упаковываем ${images.length} файл(ов) в ZIP…`);
+      const outZip = new JSZip();
+      for (const { name, blob } of images) outZip.file(name, blob);
 
-    function guessMime(filename) {
-      const ext = filename.split(".").pop().toLowerCase();
-      return { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
-               gif: "image/gif", svg: "image/svg+xml", webp: "image/webp",
-               bmp: "image/bmp" }[ext] || "application/octet-stream";
+      const zipBlob = await outZip.generateAsync({ type: "blob" });
+      setProgress(100, "Готово!");
+
+      const url = URL.createObjectURL(zipBlob);
+      const a   = document.createElement("a");
+      a.href     = url;
+      a.download = selectedFile.name.replace(/\.(pptx|pdf)$/i, "") + "_images.zip";
+      a.click();
+      URL.revokeObjectURL(url);
+
+      showMessage(`Скачано ${images.length} картинок в ZIP-архиве.`, "success");
+
+      // Previews (only actual images)
+      for (const { blob } of images) {
+        if (!blob.type.startsWith("image/") && blob.type !== "") continue;
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(blob);
+        previewGrid.appendChild(img);
+      }
+
+    } catch (err) {
+      showMessage("Ошибка: " + err.message, "error");
+      console.error(err);
     }
-  </script>
+
+    extractBtn.disabled = false;
+    setTimeout(() => { progressWrap.style.display = "none"; }, 1500);
+  });
+</script>
 </body>
 </html>
