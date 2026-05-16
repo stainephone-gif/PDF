@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PPTX Image Extractor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.10);
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: .25rem;
+    }
+
+    .subtitle {
+      color: #718096;
+      font-size: .9rem;
+      margin-bottom: 2rem;
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed #cbd5e0;
+      border-radius: 12px;
+      padding: 2rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: #4f6ef7;
+      background: #eef2ff;
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .drop-icon { font-size: 2.5rem; margin-bottom: .5rem; }
+
+    .drop-label {
+      color: #4a5568;
+      font-size: .95rem;
+    }
+
+    .drop-label span {
+      color: #4f6ef7;
+      font-weight: 600;
+    }
+
+    .file-name {
+      margin-top: .75rem;
+      font-size: .85rem;
+      color: #4f6ef7;
+      font-weight: 500;
+      min-height: 1.2em;
+    }
+
+    /* Button */
+    .btn {
+      display: block;
+      width: 100%;
+      margin-top: 1.25rem;
+      padding: .85rem;
+      border: none;
+      border-radius: 10px;
+      background: #4f6ef7;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s, opacity .2s;
+    }
+
+    .btn:hover { background: #3a56d4; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+
+    /* Progress */
+    .progress-wrap {
+      display: none;
+      margin-top: 1.25rem;
+    }
+
+    .progress-bar-bg {
+      background: #e2e8f0;
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #4f6ef7;
+      border-radius: 999px;
+      transition: width .3s;
+    }
+
+    .progress-label {
+      margin-top: .5rem;
+      font-size: .85rem;
+      color: #718096;
+      text-align: center;
+    }
+
+    /* Message */
+    .message {
+      margin-top: 1rem;
+      padding: .75rem 1rem;
+      border-radius: 8px;
+      font-size: .9rem;
+      display: none;
+    }
+
+    .message.error {
+      background: #fff5f5;
+      color: #c53030;
+      border: 1px solid #feb2b2;
+    }
+
+    .message.success {
+      background: #f0fff4;
+      color: #276749;
+      border: 1px solid #9ae6b4;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>PPTX Image Extractor</h1>
+    <p class="subtitle">Загрузите презентацию — получите ZIP с картинками</p>
+
+    <div class="drop-zone" id="dropZone">
+      <input type="file" accept=".pptx" id="fileInput" />
+      <div class="drop-icon">📂</div>
+      <div class="drop-label">Перетащите файл сюда или <span>выберите</span></div>
+      <div class="file-name" id="fileName"></div>
+    </div>
+
+    <button class="btn" id="extractBtn" disabled>Извлечь картинки</button>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="progress-label" id="progressLabel">Отправка файла…</div>
+    </div>
+
+    <div class="message" id="message"></div>
+  </div>
+
+  <script>
+    const fileInput   = document.getElementById("fileInput");
+    const dropZone    = document.getElementById("dropZone");
+    const fileNameEl  = document.getElementById("fileName");
+    const extractBtn  = document.getElementById("extractBtn");
+    const progressWrap= document.getElementById("progressWrap");
+    const progressBar = document.getElementById("progressBar");
+    const progressLbl = document.getElementById("progressLabel");
+    const messageEl   = document.getElementById("message");
+
+    function setFile(file) {
+      if (!file) return;
+      fileNameEl.textContent = file.name;
+      extractBtn.disabled = false;
+      hideMessage();
+    }
+
+    fileInput.addEventListener("change", () => setFile(fileInput.files[0]));
+
+    dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+    dropZone.addEventListener("drop", e => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      const file = e.dataTransfer.files[0];
+      if (file) { fileInput.files = e.dataTransfer.files; setFile(file); }
+    });
+
+    function showMessage(text, type) {
+      messageEl.textContent = text;
+      messageEl.className = `message ${type}`;
+      messageEl.style.display = "block";
+    }
+
+    function hideMessage() {
+      messageEl.style.display = "none";
+    }
+
+    extractBtn.addEventListener("click", () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      extractBtn.disabled = true;
+      progressWrap.style.display = "block";
+      progressBar.style.width = "0%";
+      progressLbl.textContent = "Отправка файла…";
+      hideMessage();
+
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener("progress", e => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 80);
+          progressBar.style.width = pct + "%";
+          progressLbl.textContent = `Загрузка: ${pct}%`;
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        progressBar.style.width = "100%";
+        progressLbl.textContent = "Готово!";
+
+        if (xhr.status === 200) {
+          const blob = new Blob([xhr.response], { type: "application/zip" });
+          const url  = URL.createObjectURL(blob);
+          const a    = document.createElement("a");
+          const stem = file.name.replace(/\.pptx$/i, "");
+          a.href     = url;
+          a.download = `${stem}_images.zip`;
+          a.click();
+          URL.revokeObjectURL(url);
+          showMessage("Архив успешно скачан!", "success");
+        } else {
+          let err = "Неизвестная ошибка";
+          try { err = JSON.parse(xhr.responseText).error; } catch {}
+          showMessage(err, "error");
+        }
+
+        extractBtn.disabled = false;
+        setTimeout(() => { progressWrap.style.display = "none"; }, 1500);
+      });
+
+      xhr.addEventListener("error", () => {
+        showMessage("Ошибка сети. Проверьте подключение.", "error");
+        extractBtn.disabled = false;
+        progressWrap.style.display = "none";
+      });
+
+      xhr.open("POST", "/extract");
+      xhr.responseType = "arraybuffer";
+      xhr.send(formData);
+    });
+  </script>
+</body>
+</html>
