@@ -184,16 +184,15 @@
 
     // Try synchronous access first (works after getOperatorList resolves),
     // then fall back to async callback, then skip after timeout.
+    function hasImageContent(v) {
+      // PDF.js can return raw pixel array, ImageBitmap, or {bitmap, width, height}
+      return v && (v.data || v instanceof ImageBitmap || (v.bitmap instanceof ImageBitmap));
+    }
+
     async function resolveImg(name, pageObj) {
-      // 1) synchronous read — PDF.js populates objs during getOperatorList
-      try {
-        const v = pageObj.objs.get(name);
-        if (v && v.data) return v;
-      } catch {}
-      try {
-        const v = pdf.commonObjs.get(name);
-        if (v && v.data) return v;
-      } catch {}
+      // 1) synchronous read — populated during getOperatorList
+      try { const v = pageObj.objs.get(name);  if (hasImageContent(v)) return v; } catch {}
+      try { const v = pdf.commonObjs.get(name); if (hasImageContent(v)) return v; } catch {}
 
       // 2) async callback with timeout
       return Promise.race([
@@ -203,13 +202,13 @@
       ]);
     }
 
+    // Deduplicate by image name across all pages (same xref = same content)
     for (const name of imgNames) {
-      const key = `${pageNum}_${name}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+      if (seen.has(name)) continue;
+      seen.add(name);
 
       const imgData = await resolveImg(name, page);
-      if (!imgData || !imgData.data) continue;
+      if (!hasImageContent(imgData)) continue;
 
       const blob = imgDataToBlob(imgData);
       if (blob) imgs.push(blob);
@@ -217,7 +216,7 @@
 
     // Handle inline images (data already available, no async needed)
     for (const imgData of inlineImages) {
-      if (!imgData || !imgData.data) continue;
+      if (!hasImageContent(imgData)) continue;
       const blob = imgDataToBlob(imgData);
       if (blob) imgs.push(blob);
     }
@@ -228,21 +227,33 @@
   function imgDataToBlob(imgData) {
     try {
       const canvas = document.createElement("canvas");
-      canvas.width  = imgData.width;
-      canvas.height = imgData.height;
       const ctx = canvas.getContext("2d");
-      const id  = ctx.createImageData(imgData.width, imgData.height);
-      const src = imgData.data;
-      const dst = id.data;
-      if (src.length === imgData.width * imgData.height * 4) {
-        dst.set(src);
-      } else {
-        for (let i = 0, j = 0; i < src.length; i += 3, j += 4) {
-          dst[j] = src[i]; dst[j+1] = src[i+1]; dst[j+2] = src[i+2]; dst[j+3] = 255;
+
+      // Case 1: ImageBitmap (PDF.js returns this for JPEG images)
+      const bitmap = imgData instanceof ImageBitmap ? imgData : imgData.bitmap;
+      if (bitmap instanceof ImageBitmap) {
+        canvas.width  = bitmap.width;
+        canvas.height = bitmap.height;
+        ctx.drawImage(bitmap, 0, 0);
+      } else if (imgData.data) {
+        // Case 2: raw pixel array (RGBA or RGB)
+        canvas.width  = imgData.width;
+        canvas.height = imgData.height;
+        const id  = ctx.createImageData(imgData.width, imgData.height);
+        const src = imgData.data;
+        const dst = id.data;
+        if (src.length === imgData.width * imgData.height * 4) {
+          dst.set(src);
+        } else {
+          for (let i = 0, j = 0; i < src.length; i += 3, j += 4) {
+            dst[j] = src[i]; dst[j+1] = src[i+1]; dst[j+2] = src[i+2]; dst[j+3] = 255;
+          }
         }
+        ctx.putImageData(id, 0, 0);
+      } else {
+        return null;
       }
-      ctx.putImageData(id, 0, 0);
-      // Use synchronous toDataURL → Blob to avoid another async hang
+
       const dataUrl = canvas.toDataURL("image/png");
       const bin = atob(dataUrl.split(",")[1]);
       const arr = new Uint8Array(bin.length);
