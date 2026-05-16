@@ -180,10 +180,17 @@
         if (seen.has(globalKey)) continue;
         seen.add(globalKey);
 
-        // Resolve the image from page objects
-        const imgData = await new Promise(resolve => {
-          page.objs.get(imgName, obj => resolve(obj));
+        // Resolve image from page objects or common objects, with timeout guard
+        const timeout = new Promise(res => setTimeout(() => res(null), 8000));
+        const fromObjs = new Promise(res => {
+          try { page.objs.get(imgName, obj => res(obj)); }
+          catch { res(null); }
         });
+        const fromCommon = new Promise(res => {
+          try { pdf.commonObjs.get(imgName, obj => res(obj)); }
+          catch { res(null); }
+        });
+        const imgData = await Promise.race([fromObjs, fromCommon, timeout]);
 
         if (!imgData || !imgData.data) continue;
 
