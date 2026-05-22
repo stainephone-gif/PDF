@@ -4,12 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PPTX Image Extractor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #f0f4f8;
+      font-family: 'Inter', sans-serif;
+      background: #101010;
+      color: #F3F3F3;
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -18,31 +22,33 @@
     }
 
     .card {
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 4px 24px rgba(0,0,0,.10);
-      padding: 2.5rem 2rem;
+      background: #080808;
+      border: 1px solid #333333;
+      border-radius: 8px;
+      padding: 24px;
       width: 100%;
       max-width: 480px;
     }
 
     h1 {
-      font-size: 1.5rem;
+      font-size: 34px;
       font-weight: 700;
-      color: #1a202c;
-      margin-bottom: .25rem;
+      color: #F3F3F3;
+      line-height: 1.07;
+      letter-spacing: -0.007px;
+      margin-bottom: 8px;
     }
 
     .subtitle {
-      color: #718096;
-      font-size: .9rem;
-      margin-bottom: 2rem;
+      color: #949494;
+      font-size: 16px;
+      line-height: 1.5;
+      margin-bottom: 32px;
     }
 
-    /* Drop zone */
     .drop-zone {
-      border: 2px dashed #cbd5e0;
-      border-radius: 12px;
+      border: 1px solid #333333;
+      border-radius: 8px;
       padding: 2rem 1rem;
       text-align: center;
       cursor: pointer;
@@ -51,8 +57,8 @@
     }
 
     .drop-zone:hover, .drop-zone.dragover {
-      border-color: #4f6ef7;
-      background: #eef2ff;
+      border-color: #E7C59A;
+      background: rgba(231, 197, 154, 0.04);
     }
 
     .drop-zone input[type="file"] {
@@ -62,92 +68,106 @@
       cursor: pointer;
     }
 
-    .drop-icon { font-size: 2.5rem; margin-bottom: .5rem; }
+    .drop-icon {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1.25rem;
+      color: #949494;
+      margin-bottom: 10px;
+    }
 
     .drop-label {
-      color: #4a5568;
-      font-size: .95rem;
+      color: #949494;
+      font-size: 14px;
+      line-height: 1.5;
     }
 
     .drop-label span {
-      color: #4f6ef7;
-      font-weight: 600;
+      color: #E7C59A;
     }
 
     .file-name {
-      margin-top: .75rem;
-      font-size: .85rem;
-      color: #4f6ef7;
-      font-weight: 500;
+      margin-top: 10px;
+      font-size: 13px;
+      color: #E7C59A;
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: -0.037em;
       min-height: 1.2em;
     }
 
-    /* Button */
     .btn {
       display: block;
       width: 100%;
-      margin-top: 1.25rem;
-      padding: .85rem;
-      border: none;
-      border-radius: 10px;
-      background: #4f6ef7;
-      color: #fff;
-      font-size: 1rem;
-      font-weight: 600;
+      margin-top: 16px;
+      padding: 14px;
+      border: 1px solid #333333;
+      border-radius: 8px;
+      background: #FFFFFF;
+      color: #101010;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       cursor: pointer;
-      transition: background .2s, opacity .2s;
+      transition: background .15s, color .15s;
     }
 
-    .btn:hover { background: #3a56d4; }
-    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .btn:hover { background: #F3F3F3; }
+    .btn:disabled {
+      background: transparent;
+      color: #949494;
+      border-color: #333333;
+      cursor: not-allowed;
+    }
 
-    /* Progress */
     .progress-wrap {
       display: none;
-      margin-top: 1.25rem;
+      margin-top: 16px;
     }
 
     .progress-bar-bg {
-      background: #e2e8f0;
+      background: #333333;
       border-radius: 999px;
-      height: 8px;
+      height: 2px;
       overflow: hidden;
     }
 
     .progress-bar {
       height: 100%;
       width: 0%;
-      background: #4f6ef7;
+      background: #E7C59A;
       border-radius: 999px;
       transition: width .3s;
     }
 
     .progress-label {
-      margin-top: .5rem;
-      font-size: .85rem;
-      color: #718096;
-      text-align: center;
+      margin-top: 8px;
+      font-size: 13px;
+      color: #949494;
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: -0.022em;
     }
 
-    /* Message */
     .message {
-      margin-top: 1rem;
-      padding: .75rem 1rem;
+      margin-top: 16px;
+      padding: 12px 16px;
       border-radius: 8px;
-      font-size: .9rem;
+      font-size: 13px;
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: -0.022em;
       display: none;
     }
 
     .message.error {
-      background: #fff5f5;
-      color: #c53030;
-      border: 1px solid #feb2b2;
+      background: rgba(197, 48, 48, 0.08);
+      color: #F3F3F3;
+      border: 1px solid rgba(197, 48, 48, 0.3);
     }
 
     .message.success {
-      background: #f0fff4;
-      color: #276749;
-      border: 1px solid #9ae6b4;
+      background: rgba(0, 172, 92, 0.08);
+      color: #00AC5C;
+      border: 1px solid rgba(0, 172, 92, 0.3);
     }
   </style>
 </head>
@@ -158,7 +178,7 @@
 
     <div class="drop-zone" id="dropZone">
       <input type="file" accept=".pptx" id="fileInput" />
-      <div class="drop-icon">📂</div>
+      <div class="drop-icon">[ + ]</div>
       <div class="drop-label">Перетащите файл сюда или <span>выберите</span></div>
       <div class="file-name" id="fileName"></div>
     </div>
